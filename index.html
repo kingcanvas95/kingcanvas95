@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Web</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #87CEEB;
+        }
+        h1 {
+            color: #228B22;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        .image {
+            width: 100%;
+            border-radius: 10px;
+        }
+        nav {
+            margin-bottom: 20px;
+        }
+        nav a {
+            margin: 0 10px;
+            text-decoration: none;
+            color: #228B22;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .content {
+            display: none;
+        }
+        .active {
+            display: block;
+        }
+        footer {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #228B22;
+            color: white;
+            border-radius: 5px;
+        }
+        .download-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #228B22;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 5px;
+        }
+    </style>
+    <script>
+        function showPage(pageId) {
+            let pages = document.querySelectorAll('.content');
+            pages.forEach(page => page.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <nav>
+            <a onclick="showPage('home')">Home</a>
+            <a onclick="showPage('about')">About</a>
+            <a onclick="showPage('content')">Content</a>
+            <a onclick="showPage('news')">News</a>
+        </nav>
+        
+        <div id="home" class="content active">
+            <h1>Welcome to the Minecraft Web Page!</h1>
+            <img class="image" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSy53aSzKwwtJITdrBJFwpeGkcil6dEGAyL7Q&s" alt="Minecraft Cover">
+            <p>Minecraft is a sandbox video game developed by Mojang Studios. It allows players to explore a blocky, procedurally-generated 3D world and build anything they can imagine.</p>
+            <a class="download-btn" href="minecraft.zip" download>Download Free verson: (EaglerCraft 1.12.2)</a>
+        </div>
+        
+        <div id="about" class="content">
+            <h1>About Minecraft</h1>
+            <p>Minecraft was created by Markus "Notch" Persson and released by Mojang in 2011. It has since become one of the best-selling games of all time.</p>
+        </div>
+        
+        <div id="content" class="content">
+            <h1>Minecraft Content</h1>
+            <p>See our videos that we posted.</p>
+        </div>
+        
+        <div id="news" class="content">
+            <h1>Minecraft News</h1>
+            <p>Get updates on what we are doing!</p>
+        </div>
+    </div>
+    
+    <footer>
+        <p>&copy; 2025 Minecraft Web Page. All rights reserved.</p>
+    </footer>
+</body>
+</html>
