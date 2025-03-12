@@ -1,0 +1,182 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shooting Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        canvas {
+            border: 2px solid #333;
+            background-color: #fff;
+        }
+        #menu {
+            position: absolute;
+            text-align: center;
+            display: none;
+        }
+        #menu button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            font-size: 24px;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div id="menu">
+        <h1>Shooting Game</h1>
+        <button onclick="startGame()">Start Game</button>
+        <button onclick="showHighScore()">High Score</button>
+        <div id="highScore" style="display:none;"></div>
+    </div>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <div id="gameOver">Game Over! Press R to Restart</div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let shooterX = canvas.width / 2 - 20;
+        const shooterY = canvas.height - 30;
+        const bullets = [];
+        const targets = [];
+        let score = 0;
+        let highScore = localStorage.getItem('highScore') ? parseInt(localStorage.getItem('highScore')) : 0;
+        let gameOver = false;
+        let targetSpeed = 1; // Slower target speed
+
+        function drawShooter() {
+            ctx.fillStyle = 'blue';
+            ctx.fillRect(shooterX, shooterY, 40, 20);
+        }
+
+        function drawBullets() {
+            ctx.fillStyle = 'red';
+            bullets.forEach((bullet, index) => {
+                if (bullet.y < 0) {
+                    bullets.splice(index, 1);
+                } else {
+                    ctx.fillRect(bullet.x, bullet.y, 5, 15);
+                    bullet.y -= 5;
+                }
+            });
+        }
+
+        function drawTargets() {
+            ctx.fillStyle = 'green';
+            targets.forEach((target, index) => {
+                if (target.y > canvas.height) {
+                    gameOver = true; // End game if target reaches bottom
+                } else {
+                    ctx.fillRect(target.x, target.y, 40, 40);
+                    target.y += targetSpeed; // Move target down
+                }
+            });
+        }
+
+        function checkCollisions() {
+            bullets.forEach((bullet, bulletIndex) => {
+                targets.forEach((target, targetIndex) => {
+                    if (
+                        bullet.x < target.x + 40 &&
+                        bullet.x + 5 > target.x &&
+                        bullet.y < target.y + 40 &&
+                        bullet.y + 15 > target.y
+                    ) {
+                        bullets.splice(bulletIndex, 1);
+                        targets.splice(targetIndex, 1);
+                        score++;
+                    }
+                });
+            });
+        }
+
+        function spawnTarget() {
+            const targetX = Math.random() * (canvas.width - 40);
+            targets.push({ x: targetX, y: 0 });
+        }
+
+        function update() {
+            if (gameOver) {
+                document.getElementById('gameOver').style.display = 'block';
+                return;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawShooter();
+            drawBullets();
+            drawTargets();
+            checkCollisions();
+
+            ctx.fillStyle = 'black';
+            ctx.fillText(`Score: ${score}`, 10, 20);
+            ctx.fillText(`High Score: ${highScore}`, 10, 40);
+
+            requestAnimationFrame(update);
+        }
+
+        function restartGame() {
+            shooterX = canvas.width / 2 - 20;
+            bullets.length = 0;
+            targets.length = 0;
+            score = 0;
+            gameOver = false;
+            targetSpeed = 1;
+            document.getElementById('gameOver').style.display = 'none';
+            update();
+        }
+
+        function startGame() {
+            document.getElementById('menu').style.display = 'none';
+            restartGame();
+            setInterval(spawnTarget, 2000); // Spawn a new target every 2 seconds
+        }
+
+        function showHighScore() {
+            alert(`High Score: ${highScore}`);
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'r' || event.key === 'R') {
+                restartGame();
+            }
+
+            if (!gameOver) {
+                if (event.key === 'ArrowLeft' && shooterX > 0) {
+                    shooterX -= 20;
+                } else if (event.key === 'ArrowRight' && shooterX < canvas.width - 40) {
+                    shooterX += 20;
+                } else if (event.key === ' ') {
+                    bullets.push({ x: shooterX + 17.5, y: shooterY - 15 });
+                }
+            }
+        });
+
+        // Update high score if the game ends
+        setInterval(() => {
+            if (gameOver && score > highScore) {
+                highScore = score;
+                localStorage.setItem('highScore', highScore);
+            }
+        }, 100);
+        
+        // Show the menu on initial load
+        document.getElementById('menu').style.display = 'block';
+    </script>
+</body>
+</html>
