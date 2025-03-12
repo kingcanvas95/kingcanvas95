@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -17,12 +17,12 @@
             border: 2px solid #333;
             background-color: #fff;
         }
-        #menu {
+        #menu, #pauseMenu, #levelUpPopup {
             position: absolute;
             text-align: center;
             display: none;
         }
-        #menu button {
+        #menu button, #pauseMenu button {
             padding: 10px 20px;
             margin: 10px;
             font-size: 16px;
@@ -36,17 +36,42 @@
             font-size: 24px;
             color: red;
         }
+        #fullscreenButton {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px 15px;
+            font-size: 16px;
+        }
+        #levelUpPopup {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 10px;
+            background-color: rgba(0, 128, 0, 0.8);
+            color: white;
+            border-radius: 5px;
+            display: none;
+        }
     </style>
 </head>
 <body>
+    <button id="fullscreenButton" onclick="toggleFullScreen()">Toggle Fullscreen</button>
     <div id="menu">
         <h1>Shooting Game</h1>
-        <button onclick="startGame()">Start Game</button>
-        <button onclick="showHighScore()">High Score</button>
-        <div id="highScore" style="display:none;"></div>
+        <button onclick="selectDifficulty('infinity')">Infinity Mode</button>
+        <button onclick="selectDifficulty('levels')">Levels</button>
+        <button onclick="showHighScores()">High Scores</button>
     </div>
-    <canvas id="gameCanvas" width="600" height="400"></canvas>
-    <div id="gameOver">Game Over! Press R to Restart</div>
+    <canvas id="gameCanvas" width="1000" height="500"></canvas>
+    <div id="pauseMenu">
+        <h2>Paused</h2>
+        <button onclick="resumeGame()">Resume</button>
+    </div>
+    <div id="gameOver">Game Over! Score: <span id="finalScore"></span>. Press R to Restart</div>
+    <div id="levelUpPopup">Next Level: <span id="levelText"></span></div>
+
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -56,13 +81,26 @@
         const bullets = [];
         const targets = [];
         let score = 0;
-        let highScore = localStorage.getItem('highScore') ? parseInt(localStorage.getItem('highScore')) : 0;
+        let level = 1;
+        let highScores = {
+            infinity: localStorage.getItem('highScore_infinity') ? parseInt(localStorage.getItem('highScore_infinity')) : 0,
+            levels: localStorage.getItem('highScore_levels') ? parseInt(localStorage.getItem('highScore_levels')) : 0
+        };
+        let currentDifficulty = '';
         let gameOver = false;
-        let targetSpeed = 1; // Slower target speed
+        let paused = false;
+        let targetSpeed = 1;
+        let spawnInterval;
+        let spawnRate = 2000; // Default spawn rate
 
         function drawShooter() {
             ctx.fillStyle = 'blue';
-            ctx.fillRect(shooterX, shooterY, 40, 20);
+            ctx.beginPath();
+            ctx.moveTo(shooterX + 20, shooterY);
+            ctx.lineTo(shooterX, shooterY + 30);
+            ctx.lineTo(shooterX + 40, shooterY + 30);
+            ctx.closePath();
+            ctx.fill();
         }
 
         function drawBullets() {
@@ -101,6 +139,10 @@
                         bullets.splice(bulletIndex, 1);
                         targets.splice(targetIndex, 1);
                         score++;
+                        if (currentDifficulty === 'infinity') {
+                            targetSpeed += 0.1; // Gradually increase speed in Infinity Mode
+                        }
+                        checkLevelUp(); // Check for level up in Levels mode
                     }
                 });
             });
@@ -111,10 +153,37 @@
             targets.push({ x: targetX, y: 0 });
         }
 
+        function checkLevelUp() {
+            if (currentDifficulty === 'levels' && score >= level * 10) { // Increase level every 10 points
+                level++;
+                targetSpeed += 0.5; // Increase target speed
+                spawnRate -= 100; // Decrease spawn interval
+                clearInterval(spawnInterval);
+                spawnInterval = setInterval(spawnTarget, spawnRate); // Update spawn interval
+                showLevelUpPopup(); // Show level up popup
+            }
+        }
+
+        function showLevelUpPopup() {
+            const popup = document.getElementById('levelUpPopup');
+            const levelText = document.getElementById('levelText');
+            levelText.textContent = level; // Set the current level
+            popup.style.display = 'block';
+            setTimeout(() => {
+                popup.style.display = 'none'; // Hide after 3 seconds
+            }, 3000);
+        }
+
         function update() {
             if (gameOver) {
+                document.getElementById('finalScore').textContent = score;
                 document.getElementById('gameOver').style.display = 'block';
+                updateHighScore();
+                setTimeout(showMenu, 5000); // Redirect to menu after 5 seconds
                 return;
+            }
+            if (paused) {
+                return; // Pause the game
             }
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -125,58 +194,99 @@
 
             ctx.fillStyle = 'black';
             ctx.fillText(`Score: ${score}`, 10, 20);
-            ctx.fillText(`High Score: ${highScore}`, 10, 40);
+            if (currentDifficulty === 'levels') {
+                ctx.fillText(`Level: ${level}`, 10, 40);
+            }
+            ctx.fillText(`High Score (Infinity): ${highScores.infinity}`, 10, 60);
+            ctx.fillText(`High Score (Levels): ${highScores.levels}`, 10, 80);
 
             requestAnimationFrame(update);
         }
 
-        function restartGame() {
-            shooterX = canvas.width / 2 - 20;
-            bullets.length = 0;
-            targets.length = 0;
-            score = 0;
-            gameOver = false;
-            targetSpeed = 1;
-            document.getElementById('gameOver').style.display = 'none';
-            update();
+        function updateHighScore() {
+            if (score > highScores[currentDifficulty]) {
+                highScores[currentDifficulty] = score;
+                localStorage.setItem(`highScore_${currentDifficulty}`, score);
+            }
         }
 
-        function startGame() {
+        function restartGame() {
+            shooterX = canvas.width / 2 - 20; // Reset shooter position
+            bullets.length = 0; // Clear bullets
+            targets.length = 0; // Clear targets
+            score = 0; // Reset score
+            level = 1; // Reset level
+            targetSpeed = 1; // Reset target speed
+            spawnRate = 2000; // Reset spawn rate
+            clearInterval(spawnInterval); // Clear previous interval
+            gameOver = false; // Reset game over state
+            document.getElementById('gameOver').style.display = 'none'; // Hide game over message
+            update(); // Start the game loop
+        }
+
+        function selectDifficulty(level) {
+            currentDifficulty = level;
+            switch(level) {
+                case 'infinity':
+                    targetSpeed = 1;         // Normal speed for Infinity Mode
+                    spawnRate = 2000;        // Spawn every 2 seconds
+                    break;
+                case 'levels':
+                    targetSpeed = 1;         // Normal speed for Levels
+                    spawnRate = 2000;        // Spawn every 2 seconds
+                    break;
+            }
             document.getElementById('menu').style.display = 'none';
             restartGame();
-            setInterval(spawnTarget, 2000); // Spawn a new target every 2 seconds
+            spawnInterval = setInterval(spawnTarget, spawnRate); // Spawn a new target based on spawn rate
         }
 
-        function showHighScore() {
-            alert(`High Score: ${highScore}`);
+        function showHighScores() {
+            alert(`High Scores:\nInfinity Mode: ${highScores.infinity}\nLevels Mode: ${highScores.levels}`);
         }
 
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'r' || event.key === 'R') {
-                restartGame();
+        function pauseGame() {
+            paused = true;
+            document.getElementById('pauseMenu').style.display = 'block';
+        }
+
+        function resumeGame() {
+            paused = false;
+            document.getElementById('pauseMenu').style.display = 'none';
+            update(); // Resume game loop
+        }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                canvas.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
             }
+        }
 
-            if (!gameOver) {
-                if (event.key === 'ArrowLeft' && shooterX > 0) {
-                    shooterX -= 20;
-                } else if (event.key === 'ArrowRight' && shooterX < canvas.width - 40) {
-                    shooterX += 20;
-                } else if (event.key === ' ') {
-                    bullets.push({ x: shooterX + 17.5, y: shooterY - 15 });
-                }
+        function showMenu() {
+            document.getElementById('menu').style.display = 'block';
+            document.getElementById('gameOver').style.display = 'none';
+        }
+
+        window.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowLeft' && shooterX > 0) {
+                shooterX -= 15; // Move left
+            } else if (event.key === 'ArrowRight' && shooterX < canvas.width - 40) {
+                shooterX += 15; // Move right
+            } else if (event.key === 'ArrowUp' || event.key === ' ') {
+                bullets.push({ x: shooterX + 17.5, y: shooterY }); // Fire bullet
+            } else if (event.key === 'Escape') {
+                paused ? resumeGame() : pauseGame(); // Toggle pause
+            } else if (event.key === 'r' && gameOver) {
+                restartGame(); // Restart game on 'R' key press after game over
             }
         });
 
-        // Update high score if the game ends
-        setInterval(() => {
-            if (gameOver && score > highScore) {
-                highScore = score;
-                localStorage.setItem('highScore', highScore);
-            }
-        }, 100);
-        
         // Show the menu on initial load
-        document.getElementById('menu').style.display = 'block';
+        showMenu();
     </script>
 </body>
 </html>
